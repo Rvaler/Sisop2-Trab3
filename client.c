@@ -1,14 +1,32 @@
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-
-#include <arpa/inet.h>	
 #include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <pthread.h>
 
-char *google = "201.21.215.114";
+int socket_desc;
+int port;
+struct hostent *server;
+//char *inAddress = "201.21.215.114";
+
+
+int connectToServer(int argc, char *argv[]);
 
 int main(int argc , char *argv[])
 {
+	if(verifyInput(argc, argv) < 0)
+		return -1;
+
+	if(connectToServer(argc, argv) == -1){
+		puts("Error in connection");
+		return -1;
+	}
+	/*
 	int socket_desc;
 	struct sockaddr_in server;
 	char *message, server_reply[2000];
@@ -52,5 +70,39 @@ int main(int argc , char *argv[])
 
 	close(socket_desc);
 	puts("Closed socket");
+	*/
 	return 0;
+}
+
+int verifyInput(int argc, char *argv[]) {
+	if(argc < 3) {
+		printf("Error - Missing arguments!\nUse:./client hostname portNumber\n");
+		return -1;
+	}
+}
+
+int connectToServer(int argc, char *argv[]) {
+
+	struct sockaddr_in server_addr;
+	port = atoi(argv[2]);
+	server = gethostbyname(argv[1]);
+
+	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
+	if (socket_desc < 0)
+	{
+		printf("Could not create socket");
+		return -1;
+	}
+
+	server_addr.sin_addr = *((struct in_addr *)server->h_addr);
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons( port );
+
+	//Connect to remote server
+	if (connect(socket_desc , (struct sockaddr *)&server_addr , sizeof(server_addr)) < 0)
+	{
+		puts("connect error");
+		return 1;
+	}
+	puts("Connected");
 }
