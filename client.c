@@ -9,13 +9,18 @@
 #include <netdb.h>
 #include <pthread.h>
 
+#define MESSAGE_SIZE 256
+
 int socket_desc;
 int port;
 struct hostent *server;
+pthread_t receiverThread, senderThread;
 //char *inAddress = "201.21.215.114";
 
 
 int connectToServer(int argc, char *argv[]);
+void *messageReceiver(void *arg);
+void *messageSender(void *arg);
 
 int main(int argc , char *argv[])
 {
@@ -26,6 +31,15 @@ int main(int argc , char *argv[])
 		puts("Error in connection");
 		return -1;
 	}
+
+
+	pthread_create(&senderThread, NULL, messageSender, NULL);
+	pthread_create(&receiverThread, NULL, messageReceiver, NULL);
+
+	pthread_join(senderThread, NULL);
+	pthread_join(receiverThread, NULL);
+
+	close(socket_desc);
 	/*
 	int socket_desc;
 	struct sockaddr_in server;
@@ -102,7 +116,23 @@ int connectToServer(int argc, char *argv[]) {
 	if (connect(socket_desc , (struct sockaddr *)&server_addr , sizeof(server_addr)) < 0)
 	{
 		puts("connect error");
-		return 1;
+		return -1;
 	}
 	puts("Connected");
+	return 0;
+}
+
+void *messageSender(void *arg){
+}
+
+void *messageReceiver(void *arg){
+	char buffer[MESSAGE_SIZE];
+	//Receive a reply from the server
+	if( recv(socket_desc, buffer , MESSAGE_SIZE , 0) < 0)
+	{
+		puts("recv failed");
+	}
+	puts(buffer);
+
+    pthread_exit(0);
 }
