@@ -6,6 +6,19 @@
 #include <unistd.h>
 #include <pthread.h>
 
+
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
+
+struct PACKET {
+	int roomID;
+	char nickname[32];
+	char buffer[256];
+};
+
+
 void *connection_handler(void *);
 
 int main(int argc,char *argv[]){
@@ -88,10 +101,22 @@ void *connection_handler(void *socket_desc)
     write(sock , message , strlen(message));
      
     //Receive a message from client
-    while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
+    while( (read_size = recv(sock , (void *)&client_message , 2000 , 0)) > 0 )
     {
         //Send the message back to client
-        write(sock , client_message , strlen(client_message));
+
+        puts(client_message);
+		struct PACKET packet;
+
+		char *msg = client_message;
+		memset(&packet, 0, sizeof(struct PACKET));
+		strcpy(packet.nickname, "Rafael");
+		strcpy(packet.buffer, msg);
+        puts("entrou aqui");
+        int a = send(sock, (void *)&packet, sizeof(struct PACKET), 0);
+		printf("%i\n", a);
+        //send(socket_desc, client_message, 200, 0);
+        //write(sock , client_message , strlen(client_message));
     }
      
     if(read_size == 0)
