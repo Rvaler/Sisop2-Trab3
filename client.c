@@ -110,6 +110,20 @@ int connectToServer(int argc, char *argv[]) {
 }
 
 void *messageSender(void *arg){
+	int contador = 0;
+	while(gets(option) && isConnected) {
+		
+		puts("gonna send");
+		struct PACKET packet;
+
+		char *msg = option;
+		memset(&packet, 0, sizeof(struct PACKET));
+		strcpy(packet.nickname, "Rafael");
+		strcpy(packet.buffer, msg);
+
+		int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+	}
+	pthread_exit(0);
 }
 
 void *messageReceiver(void *arg){
@@ -117,6 +131,7 @@ void *messageReceiver(void *arg){
 	struct PACKET receivedPacket;
 
 	while(isConnected) {
+		puts("waiting for incoming message");
 		receivedMessage = recv(socket_desc, (void *)&receivedPacket, sizeof(struct PACKET) , 0);
 		if(!receivedMessage) {
 			puts("Connection with server terminated");
