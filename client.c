@@ -24,13 +24,18 @@ struct hostent *server;
 pthread_t receiverThread, senderThread;
 //char *inAddress = "201.21.215.114";
 
-// put this in .h later
+struct USER {
+	char nickname[NICKLENGHT];
+	int roomID;
+};
+
 struct PACKET {
 	int roomID;
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
 };
 
+struct USER myself;
 
 int connectToServer(int argc, char *argv[]);
 void *messageReceiver(void *arg);
@@ -47,7 +52,9 @@ int main(int argc , char *argv[])
 		return ERROR;
 	}
 
-
+	myself.roomID = 0;
+	strcpy(myself.nickname, "Undefined");
+	
 	
 /*
 	while(gets(option)){ // TODO: implementar o menu aqui
@@ -113,15 +120,27 @@ void *messageSender(void *arg){
 	int contador = 0;
 	while(gets(option) && isConnected) {
 		
-		puts("gonna send");
-		struct PACKET packet;
+		if(strncmp(option, "/nickname", 8) == 0){
+			puts("Mudando nickname");
+			char *nickPointer = strtok(option, " ");
+			nickPointer = strtok(0, " ");
+			memset(myself.nickname, 0, sizeof(char) * NICKLENGHT);
+			if (nickPointer != NULL) {
+				strcpy(myself.nickname, nickPointer);
+			}
+		}else{
+			puts("gonna send");
+			struct PACKET packet;
 
-		char *msg = option;
-		memset(&packet, 0, sizeof(struct PACKET));
-		strcpy(packet.nickname, "Rafael");
-		strcpy(packet.buffer, msg);
+			char *msg = option;
+			memset(&packet, 0, sizeof(struct PACKET));
+			strcpy(packet.nickname, myself.nickname);
+			strcpy(packet.buffer, msg);
 
-		int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+			printf("sending packet\n from: %s\n msg: %s\n", packet.nickname, packet.buffer);
+			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+		}
+		
 	}
 	pthread_exit(0);
 }
