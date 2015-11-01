@@ -17,7 +17,7 @@
 
 int isConnected = 0;
 
-char option[256];
+char userInput[256];
 int socket_desc;
 int port;
 struct hostent *server;
@@ -31,6 +31,7 @@ struct USER {
 
 struct PACKET {
 	int roomID;
+	int option;
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
 };
@@ -51,18 +52,6 @@ int main(int argc , char *argv[])
 		puts("Error in connection");
 		return ERROR;
 	}
-
-	myself.roomID = 0;
-	strcpy(myself.nickname, "Undefined");
-	
-	
-/*
-	while(gets(option)){ // TODO: implementar o menu aqui
-		if(!strncmp(option, "exit", 4)) {
-			puts("entrou");
-		}
-	}
-	*/
 
 	pthread_create(&senderThread, NULL, messageSender, NULL);
 	pthread_create(&receiverThread, NULL, messageReceiver, NULL);
@@ -111,6 +100,8 @@ int connectToServer(int argc, char *argv[]) {
 		return ERROR;
 	} else {
 		puts("Connected");
+		myself.roomID = 0;
+		strcpy(myself.nickname, "Undefined");
 		isConnected = 1;
 		return socket_desc;	
 	}
@@ -118,26 +109,34 @@ int connectToServer(int argc, char *argv[]) {
 
 void *messageSender(void *arg){
 	int contador = 0;
-	while(gets(option) && isConnected) {
+	while(gets(userInput) && isConnected) {
 		
-		if(strncmp(option, "/nickname", 8) == 0){
-			puts("Mudando nickname");
-			char *nickPointer = strtok(option, " ");
+		if(strncmp(userInput, "/nickname", 9) == 0){
+			char *nickPointer = strtok(userInput, " ");
 			nickPointer = strtok(0, " ");
 			memset(myself.nickname, 0, sizeof(char) * NICKLENGHT);
 			if (nickPointer != NULL) {
 				strcpy(myself.nickname, nickPointer);
+				printf("Nickname modified to: %s\n", myself.nickname);
+			}else{
+				puts("It was not possible to modify your nickname");
 			}
+
+		}else if(strncmp(userInput, "/join", 5) == 0) {
+			puts("Entering room...");
+
+		}else if(strncmp(userInput, "/leave", 6) == 0){
+			puts("Leaving room...");
+			
 		}else{
-			puts("gonna send");
 			struct PACKET packet;
 
-			char *msg = option;
+			char *msg = userInput;
 			memset(&packet, 0, sizeof(struct PACKET));
 			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
-
-			printf("sending packet\n from: %s\n msg: %s\n", packet.nickname, packet.buffer);
+			packet.option = 2;
+			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}
 		
@@ -148,9 +147,10 @@ void *messageSender(void *arg){
 void *messageReceiver(void *arg){
 	int receivedMessage;
 	struct PACKET receivedPacket;
+	puts("waiting for incoming messages");
 
 	while(isConnected) {
-		puts("waiting for incoming message");
+		
 		receivedMessage = recv(socket_desc, (void *)&receivedPacket, sizeof(struct PACKET) , 0);
 		if(!receivedMessage) {
 			puts("Connection with server terminated");

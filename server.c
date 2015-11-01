@@ -11,18 +11,25 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-
 struct PACKET {
 	int roomID;
 	char nickname[32];
 	char buffer[256];
 };
 
+int sockfd, newsockfd;
 
 void *connection_handler(void *);
 
 int main(int argc,char *argv[]){
 
+	struct sockaddr_in serv_addr;
+	int port = atoi(argv[1]);
+
+	printf("Opening Socket with ip port: %i\n", port);
+	if((sockfd))
+
+	/*
 	int socket_desc, new_socket , c, *new_sock;
 	struct sockaddr_in server, client;
 	char *message;
@@ -80,6 +87,7 @@ int main(int argc,char *argv[]){
         return 1;
     }
 
+    */
 	return 0;
 }
 
@@ -110,7 +118,7 @@ void *connection_handler(void *socket_desc)
 
 		char *msg = client_message;
 		memset(&packet, 0, sizeof(struct PACKET));
-		strcpy(packet.nickname, "Rafael");
+		strcpy(packet.nickname, msg);
 		strcpy(packet.buffer, msg);
         puts("entrou aqui");
         int a = send(sock, (void *)&packet, sizeof(struct PACKET), 0);
