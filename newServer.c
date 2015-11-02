@@ -11,7 +11,7 @@
 
 #include <arpa/inet.h>
 
-#define ROOMNAMELENGHT 32
+#define ROOMNAMELENGHT 64
 #define NICKLENGHT 32
 #define MESSAGE_SIZE 256
 #define ERROR -1
@@ -64,19 +64,19 @@ void roomListInit(struct ROOMLIST *ll){
 }
 
 int roomListInsert(struct ROOMLIST *ll, struct ROOM *room) {
+
+    // ARRUMAR ISSO AQUI
     if(ll->head == NULL) {
         ll->head = (struct ROOM *)malloc(sizeof(struct ROOM));
         ll->head = room;
-        ll->head->next = NULL;
         ll->tail = ll->head;
-    }
-    else {
+        ll->tail->next = NULL;
+    }else{
         ll->tail->next = (struct ROOM *)malloc(sizeof(struct ROOM));
         ll->tail->next = room;
-        ll->tail->next->next = NULL;
-        ll->tail = ll->tail->next;
+        ll->tail = room;
+        ll->tail->next = NULL;
     }
-    ll->size++;
     return 0;
 }
 
@@ -157,6 +157,14 @@ int list_delete(struct LLIST *ll, struct THREADINFO *thr_info) {
         }
     }
     return -1;
+}
+
+void printRoomList(struct ROOMLIST *list) {
+
+    struct ROOM *current;
+    for(current = list->head; current != NULL; current = current->next) {
+        printf("%i - %s\n", current->roomID, current->roomName);
+    }
 }
  
 void list_dump(struct LLIST *ll) {
@@ -287,6 +295,7 @@ void *client_handler(void *fd) {
             break;
         }
         printf("[%d] %i %s %s\n", threadinfo.sockfd, packet.option, packet.nickname, packet.buffer);
+        /*
         if(packet.option ==  1) {
             printf("Set alias to %s\n", packet.nickname);
             pthread_mutex_lock(&clientlist_mutex);
@@ -299,6 +308,7 @@ void *client_handler(void *fd) {
             }
             pthread_mutex_unlock(&clientlist_mutex);
         }
+        */
         /*
         else if(packet.option == 2) {
             int i;
@@ -321,7 +331,7 @@ void *client_handler(void *fd) {
             
         }
         */
-        else if(packet.option == 2) { // SEND
+        if(packet.option == 2) { // SEND
             pthread_mutex_lock(&clientlist_mutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
@@ -335,14 +345,20 @@ void *client_handler(void *fd) {
             pthread_mutex_unlock(&clientlist_mutex);
         }
         else if(packet.option == 3) { // CREATE ROOM
+            puts("Creating new room");
+            printf("room name %s", packet.buffer);
             struct ROOM newRoom;
             strcpy(newRoom.roomName, packet.buffer);
-            pthread_mutex_lock(&clientlist_mutex);
+            pthread_mutex_lock(&roomList_mutex);
             newRoom.roomID = ++roomCounter;
             roomListInsert(&room_list, &newRoom);
-            pthread_mutex_unlock(&clientlist_mutex);
+            pthread_mutex_unlock(&roomList_mutex);
         }
-        else if(packet.option == 5) {
+        else if(packet.option == 4) { // LIST ROOMS
+            puts("Listing rooms");
+            printRoomList(&room_list);
+        }
+        else if(packet.option == 5) { // QUIT FROM SERVER
             printf("[%d] %s has disconnected...\n", threadinfo.sockfd, threadinfo.nickname);
             pthread_mutex_lock(&clientlist_mutex);
             list_delete(&client_list, &threadinfo);
