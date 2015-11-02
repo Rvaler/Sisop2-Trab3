@@ -122,6 +122,27 @@ void *messageSender(void *arg){
 				puts("It was not possible to modify your nickname");
 			}
 
+		}else if(strncmp(userInput, "/create", 7) == 0){
+			puts("creating room");
+			char *roomName = strtok(userInput, " ");
+			roomName = strtok(0, " ");
+			printf("\nroom name %s", roomName);
+
+			struct PACKET packet;
+			char *msg = roomName;
+			memset(&packet, 0, sizeof(struct PACKET));
+			strcpy(packet.buffer, msg);
+			packet.option = 3;
+		
+			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+
+		}else if(strncmp(userInput, "/list", 5) == 0) {
+			struct PACKET packet;
+			memset(&packet, 0, sizeof(struct PACKET));
+			packet.option = 4;
+		
+			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+		
 		}else if(strncmp(userInput, "/join", 5) == 0) {
 			puts("Entering room...");
 
@@ -136,7 +157,7 @@ void *messageSender(void *arg){
 			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
 			packet.option = 2;
-			
+
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}
 		
