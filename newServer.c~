@@ -383,7 +383,7 @@ void *client_handler(void *fd) {
 	    for(aux = room_list.head; aux != NULL; aux = aux->next)
 		if(strcmp(aux->roomName, packet.buffer) == 0)
         		idRoom = aux->roomID;
-	    printf("RoomId:%i\n", idRoom);
+	    printf("RoomId:%i\n", roomID);
     	    pthread_mutex_lock(&clientlist_mutex);
 	    // Atualiza nova roomID na lista de clientes 
             for(curr = client_list.head; curr != NULL; curr = curr->next)

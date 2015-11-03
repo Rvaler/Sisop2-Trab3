@@ -174,7 +174,7 @@ void *messageSender(void *arg){
 			struct PACKET packet;
 			memset(&packet, 0, sizeof(struct PACKET));
 			packet.option = 5;
-			strcpy(packet.buffer, "noRoom");
+			strcpy(packet.buffer, roomName);
 			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 			
