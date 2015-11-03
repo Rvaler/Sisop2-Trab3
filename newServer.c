@@ -34,6 +34,7 @@ struct THREADINFO {
     pthread_t thread_ID; // thread's pointer
     int sockfd; // socket file descriptor
     char nickname[NICKLENGHT]; // client's alias
+    int roomID; // user's current room
 };
 
 
@@ -258,6 +259,7 @@ int main(int argc, char **argv) {
             puts("Connection requested received...");
             struct THREADINFO threadinfo;
             threadinfo.sockfd = newfd;
+            threadinfo.roomID = 0; // global room
             strcpy(threadinfo.nickname, "Undefined");
             pthread_mutex_lock(&clientlist_mutex);
             list_insert(&client_list, &threadinfo);
@@ -368,7 +370,14 @@ void *client_handler(void *fd) {
             puts("Listing rooms");
             printRoomList(&room_list);
         }
-        else if(packet.option == 5) { // QUIT FROM SERVER
+
+        else if(packet.option == 5){
+            puts("Join request");
+            printf("I was at room %i\n", threadinfo.roomID);
+            threadinfo.roomID = packet.roomID;
+            printf("Now i am at room %i\n", threadinfo.roomID);
+        }
+        else if(packet.option == 10) { // QUIT FROM SERVER
             printf("[%d] %s has disconnected...\n", threadinfo.sockfd, threadinfo.nickname);
             pthread_mutex_lock(&clientlist_mutex);
             list_delete(&client_list, &threadinfo);

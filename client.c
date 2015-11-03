@@ -145,6 +145,16 @@ void *messageSender(void *arg){
 		
 		}else if(strncmp(userInput, "/join", 5) == 0) {
 			puts("Entering room...");
+			char *roomID = strtok(userInput, " ");
+			roomID = strtok(0, " ");
+			printf("\nroom id %s", roomID);
+
+			struct PACKET packet;
+			memset(&packet, 0, sizeof(struct PACKET));
+			packet.option = 5;
+			packet.roomID = atoi(roomID);
+			
+			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
