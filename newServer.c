@@ -26,25 +26,20 @@ struct PACKET {
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
 };
-
 struct THREADINFO {
     pthread_t thread_ID; // thread's pointer
     int sockfd; // socket file descriptor
     char nickname[NICKLENGHT]; // client's alias
     int roomID; // user's current room
 };
-
-
 struct LLNODE {
     struct THREADINFO threadinfo;
     struct LLNODE *next;
 };
- 
 struct LLIST {
     struct LLNODE *head, *tail;
     int size;
 };
-
 struct ROOM
 {
     int roomID;
@@ -263,12 +258,12 @@ void *client_handler(void *fd) {
         printf("[%d] %i %s %s\n", threadinfo.sockfd, packet.option, packet.nickname, packet.buffer);
         
         if(packet.option ==  1) {
-            printf("Set alias to %s\n", packet.nickname);
+            printf("Set alias to %s\n", packet.buffer);
             pthread_mutex_lock(&clientlist_mutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 if(compare(&curr->threadinfo, &threadinfo) == 0) {
-                    strcpy(curr->threadinfo.nickname, packet.nickname);
-                    strcpy(threadinfo.nickname, packet.nickname);
+                    strcpy(curr->threadinfo.nickname, packet.buffer);
+                    strcpy(threadinfo.nickname, packet.buffer);
                     break;
                 }
             }
@@ -280,11 +275,11 @@ void *client_handler(void *fd) {
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
-		printf("\threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.roomID, curr->threadinfo.roomID);
+		printf("%s threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.nickname, threadinfo.roomID, curr->threadinfo.roomID);
 		if (threadinfo.roomID != curr->threadinfo.roomID || threadinfo.roomID == 0)  continue;
                 if (!compare(&curr->threadinfo, &threadinfo)) continue; 
                 spacket.option = 2;
-                strcpy(spacket.nickname, packet.nickname);
+                strcpy(spacket.nickname, threadinfo.nickname);
                 strcpy(spacket.buffer, packet.buffer);
                 sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
             }

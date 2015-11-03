@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,7 +7,6 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <pthread.h>
-
 #include <arpa/inet.h>
 
 #define NICKLENGHT 32
@@ -69,6 +67,12 @@ void initUser(){
 	puts("Connected. \nEscolha um nickname: "); 
 	gets(myself.nickname);
 	isConnected = 1;
+	struct PACKET packet;
+	memset(&packet, 0, sizeof(struct PACKET));
+	strcpy(packet.nickname, myself.nickname);
+	strcpy(packet.buffer, myself.nickname);
+	packet.option = 1;
+	int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 	puts("¡Hola! Voce esta conectado ao servidor. Para participar de um chat deve se conectar a uma sala. \nPara trocar de nick: /nickname\nPara criar uma nova sala: /create NomeDaSala\nPara se conectar a uma sala existente: /join NomeDaSala\nPara deixar uma sala: /leave");
 }
 
@@ -124,6 +128,7 @@ void *messageSender(void *arg){
 				strcpy(myself.nickname, nickPointer);
 				struct PACKET packet;
 				memset(&packet, 0, sizeof(struct PACKET));
+				strcpy(packet.nickname, myself.nickname);
 				strcpy(packet.buffer, nickPointer);
 				packet.option = 1;
 				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
