@@ -22,7 +22,6 @@
 #define OPTLEN 16
 
 struct PACKET {
-//	int roomID;
 	int option;
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
@@ -162,20 +161,9 @@ int list_delete(struct LLIST *ll, struct THREADINFO *thr_info) {
 }
 
 void printRoomList(struct ROOMLIST *list) {
-
     struct ROOM *current;
     for(current = list->head; current != NULL; current = current->next) {
         printf("%i - %s\n", current->roomID, current->roomName);
-    }
-}
- 
-void list_dump(struct LLIST *ll) {
-    struct LLNODE *curr;
-    struct THREADINFO *thr_info;
-    printf("Connection count: %d\n", ll->size);
-    for(curr = ll->head; curr != NULL; curr = curr->next) {
-        thr_info = &curr->threadinfo;
-        printf("[%d] %s\n", thr_info->sockfd, thr_info->nickname);
     }
 }
 
@@ -188,7 +176,6 @@ int roomCounter = 0;
 struct ROOMLIST room_list;
 pthread_mutex_t roomList_mutex;
 
-void *io_handler(void *param);
 void *client_handler(void *fd);
 
 int main(int argc, char **argv) {
@@ -197,42 +184,32 @@ int main(int argc, char **argv) {
     struct sockaddr_in serv_addr, client_addr;
     pthread_t interrupt;
  
-    /* initialize linked list */
     list_init(&client_list);
     roomListInit(&room_list);
  
-    /* initiate mutex */
     pthread_mutex_init(&clientlist_mutex, NULL);
     pthread_mutex_init(&roomList_mutex, NULL);
  
-    /* open a socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         puts("Error on socket creation");
         return ERROR;
     }
  
-    /* set initial values */
+
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
     serv_addr.sin_addr.s_addr = inet_addr(IP);
     memset(&(serv_addr.sin_zero), 0, 8);
  
-    /* bind address with socket */
+   
     if(bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == -1) {
         puts("Error on binding server");
         return ERROR;
     }
  
-    /* start listening for connection */
+    
     if(listen(sockfd, MAXCLIENTS) == -1) {
         puts("Error on listening");
-        return ERROR;
-    }
- 
-    /* initiate interrupt handler for IO controlling */
-    printf("Starting admin interface...\n");
-    if(pthread_create(&interrupt, NULL, io_handler, NULL) != 0) {
-        puts("Error on creaating thread to io_handler");
         return ERROR;
     }
 
@@ -240,7 +217,7 @@ int main(int argc, char **argv) {
     globalRoom = newRoom("noRoom", 0);
     roomListInsert(&room_list, globalRoom);
     
-    /* keep accepting connections */
+
     printf("Starting listener...\n");
     while(1) {
         sin_size = sizeof(struct sockaddr_in);
@@ -266,27 +243,6 @@ int main(int argc, char **argv) {
         }
     }
     return 0;
-}
-
-void *io_handler(void *param) {
-    char option[OPTLEN];
-    while(scanf("%s", option)==1) {
-        if(!strcmp(option, "exit")) {
-            puts("Terminating server...");
-            pthread_mutex_destroy(&clientlist_mutex);
-            close(sockfd);
-            exit(0);
-        }
-        else if(!strcmp(option, "list")) {
-            pthread_mutex_lock(&clientlist_mutex);
-            list_dump(&client_list);
-            pthread_mutex_unlock(&clientlist_mutex);
-        }
-        else {
-            fprintf(stderr, "Unknown command: %s...\n", option);
-        }
-    }
-    return NULL;
 }
 
 void *client_handler(void *fd) {
@@ -318,25 +274,7 @@ void *client_handler(void *fd) {
             }
             pthread_mutex_unlock(&clientlist_mutex);
         } 
-        /* else if(packet.option == 2) {
-            int i;
-            char target[ALIASLEN];
-            for(i = 0; packet.buff[i] != ' '; i++); packet.buff[i++] = 0;
-            strcpy(target, packet.buff);
-            pthread_mutex_lock(&clientlist_mutex);
-            for(curr = client_list.head; curr != NULL; curr = curr->next) {
-                if(strcmp(target, curr->threadinfo.alias) == 0) {
-                    struct PACKET spacket;
-                    memset(&spacket, 0, sizeof(struct PACKET));
-                    if(!compare(&curr->threadinfo, &threadinfo)) continue;
-                    strcpy(spacket.option, "msg");
-                    strcpy(spacket.alias, packet.alias);
-                    strcpy(spacket.buff, &packet.buff[i]);
-                    sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
-                }
-            }
-            pthread_mutex_unlock(&clientlist_mutex); 
-        }*/
+        
         if(packet.option == 2) { // SEND
             pthread_mutex_lock(&clientlist_mutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
@@ -344,9 +282,8 @@ void *client_handler(void *fd) {
                 memset(&spacket, 0, sizeof(struct PACKET));
 		printf("\threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.roomID, curr->threadinfo.roomID);
 		if (threadinfo.roomID != curr->threadinfo.roomID || threadinfo.roomID == 0)  continue;
-                if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
+                if (!compare(&curr->threadinfo, &threadinfo)) continue; 
                 spacket.option = 2;
-		//spacket.roomID = packet.roomID;
                 strcpy(spacket.nickname, packet.nickname);
                 strcpy(spacket.buffer, packet.buffer);
                 sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
@@ -409,7 +346,6 @@ void *client_handler(void *fd) {
         }
     }
  
-    /* clean up */
     close(threadinfo.sockfd);
  
     return NULL;

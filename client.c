@@ -69,7 +69,7 @@ void initUser(){
 	puts("Connected. \nEscolha um nickname: "); 
 	gets(myself.nickname);
 	isConnected = 1;
-	puts("¡Hola! Voce esta conectado ao servidor. Para participar de um chat deve se conectar a uma sala. \nPara criar uma nova sala: /create NomeDaSala\nPara se conectar a uma sala existente: /join NomeDaSala\nPara deixar uma sala: /leave");
+	puts("¡Hola! Voce esta conectado ao servidor. Para participar de um chat deve se conectar a uma sala. \nPara trocar de nick: /nickname\nPara criar uma nova sala: /create NomeDaSala\nPara se conectar a uma sala existente: /join NomeDaSala\nPara deixar uma sala: /leave");
 }
 
 int verifyInput(int argc, char *argv[]) {
