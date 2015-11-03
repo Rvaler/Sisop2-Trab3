@@ -64,7 +64,16 @@ void roomListInit(struct ROOMLIST *ll){
 }
 
 int roomListInsert(struct ROOMLIST *ll, struct ROOM *room) {
-
+    room->next = NULL;
+    if (ll->head == NULL){
+        ll->head = room;
+        ll->tail = room;
+    }else{
+        ll->tail->next = room;
+        ll->tail = room;
+    }
+    return 0;
+    /*
     // ARRUMAR ISSO AQUI
     if(ll->head == NULL) {
         ll->head = (struct ROOM *)malloc(sizeof(struct ROOM));
@@ -77,7 +86,7 @@ int roomListInsert(struct ROOMLIST *ll, struct ROOM *room) {
         ll->tail = room;
         ll->tail->next = NULL;
     }
-    return 0;
+    */
 }
 
 int roomListDelete(struct ROOMLIST *ll, struct ROOM *room) {
@@ -347,11 +356,12 @@ void *client_handler(void *fd) {
         else if(packet.option == 3) { // CREATE ROOM
             puts("Creating new room");
             printf("room name %s", packet.buffer);
-            struct ROOM newRoom;
-            strcpy(newRoom.roomName, packet.buffer);
+            struct ROOM* newRoom = (struct ROOM*) malloc(sizeof(struct ROOM));
+            //struct ROOM newRoom;
+            strcpy(newRoom->roomName, packet.buffer);
             pthread_mutex_lock(&roomList_mutex);
-            newRoom.roomID = ++roomCounter;
-            roomListInsert(&room_list, &newRoom);
+            newRoom->roomID = ++roomCounter;
+            roomListInsert(&room_list, newRoom);
             pthread_mutex_unlock(&roomList_mutex);
         }
         else if(packet.option == 4) { // LIST ROOMS
