@@ -235,7 +235,11 @@ int main(int argc, char **argv) {
         puts("Error on creaating thread to io_handler");
         return ERROR;
     }
- 
+
+    struct ROOM *globalRoom;
+    globalRoom = newRoom("noRoom", 0);
+    roomListInsert(&room_list, globalRoom);
+    
     /* keep accepting connections */
     printf("Starting listener...\n");
     while(1) {
@@ -250,13 +254,12 @@ int main(int argc, char **argv) {
             }
             puts("Connection requested received...");
             struct THREADINFO threadinfo;
-	    struct ROOM *globalRoom;
-	    globalRoom = newRoom("noRoom", 0);
+	    
             threadinfo.sockfd = newfd;
             threadinfo.roomID = globalRoom->roomID; // global room
             strcpy(threadinfo.nickname, "Undefined");
             pthread_mutex_lock(&clientlist_mutex);
-	    roomListInsert(&room_list, globalRoom);
+	    
             list_insert(&client_list, &threadinfo);
             pthread_mutex_unlock(&clientlist_mutex);
             pthread_create(&threadinfo.thread_ID, NULL, client_handler, (void *)&threadinfo);
