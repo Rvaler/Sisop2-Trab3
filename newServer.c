@@ -348,7 +348,8 @@ void *client_handler(void *fd) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
                 if(!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
-                spacket.option =  2;
+                spacket.option = 2;
+		spacket.roomID = packet.roomID;
                 strcpy(spacket.nickname, packet.nickname);
                 strcpy(spacket.buffer, packet.buffer);
                 sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);

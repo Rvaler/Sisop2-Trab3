@@ -156,6 +156,9 @@ void *messageSender(void *arg){
 			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 
+			//mudar isso
+			myself.roomID = atoi(roomID);
+
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
 			
@@ -167,6 +170,7 @@ void *messageSender(void *arg){
 			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
 			packet.option = 2;
+			packet.roomID = myself.roomID;
 
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}
@@ -188,9 +192,9 @@ void *messageReceiver(void *arg){
 			isConnected = 0;
 			pthread_exit(0);
 		}	
-		if(receivedMessage > 0){
-			printf("%s: %s \n", receivedPacket.nickname, receivedPacket.buffer);
-		}
+		if(receivedMessage > 0)
+			if (receivedPacket.roomID == myself.roomID)
+				printf("[%s]: %s \n", receivedPacket.nickname, receivedPacket.buffer);	
 		memset(&receivedPacket, 0, sizeof(struct PACKET));
 	}
 	pthread_exit(0);
