@@ -13,6 +13,15 @@
 #define MESSAGE_SIZE 256
 #define ERROR -1
 
+// Tipos de pacote
+#define CHANGENICK 1
+#define MESSAGE 2
+#define CREATE 3
+#define LIST 4
+#define JOIN 5
+#define LEAVE 5
+#define QUIT 6
+
 int isConnected = 0;
 
 char userInput[256];
@@ -29,7 +38,7 @@ char *helpMessage =                 ("\n/nickname NovoNick - Para trocar de nick
 				     "\n/help              - Ajuda");
 
 struct PACKET {
-	int option;
+	int type;
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
 };
@@ -72,7 +81,7 @@ void initUser(){
 	memset(&packet, 0, sizeof(struct PACKET));
 	if (strcmp(nickname, "") != 0) {
 		strcpy(packet.buffer, nickname);
-		packet.option = 1;
+		packet.type = CHANGENICK;
 		int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 	}else
 		puts("Entrada invalida. Nickname nao modificado. Uilize o comando /nickname para alterar.");
@@ -119,8 +128,25 @@ int connectToServer(int argc, char *argv[]) {
 	}
 }
 
+void *messageReceiver(void *arg){
+	int receivedMessage;
+	struct PACKET receivedPacket;
+	
+	while(isConnected) {
+		
+		receivedMessage = recv(socket_desc, (void *)&receivedPacket, sizeof(struct PACKET) , 0);
+		if(!receivedMessage) {
+			puts("Sem conexao com o servidor");
+			isConnected = 0;
+			pthread_exit(0);
+		}else if(receivedMessage > 0)
+			printf("[%s]: %s \n", receivedPacket.nickname, receivedPacket.buffer);	
+		memset(&receivedPacket, 0, sizeof(struct PACKET));
+	}
+	pthread_exit(0);
+}
+
 void *messageSender(void *arg){
-	int contador = 0;
 	struct PACKET packet;
 	memset(&packet, 0, sizeof(struct PACKET));
 
@@ -134,7 +160,7 @@ void *messageSender(void *arg){
 			nickPointer = strtok(0, "\0");
 			if (nickPointer != NULL) {
 				strcpy(packet.buffer, nickPointer);
-				packet.option = 1;
+				packet.type = CHANGENICK;
 				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 			}else
 				puts("Entrada invalida. Nickname nao modificado.");
@@ -144,12 +170,12 @@ void *messageSender(void *arg){
 			roomName = strtok(0, "\0");
 			if (roomName != NULL) {
 				strcpy(packet.buffer, roomName);
-				packet.option = 3;
+				packet.type = CREATE;
 				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 			}else
 				puts("Entrada invalida. Nova sala nao foi criada.");
 		}else if(strncmp(userInput, "/list", 5) == 0) {
-			packet.option = 4;
+			packet.type = LIST;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}else if(strncmp(userInput, "/join", 5) == 0) {
 			puts("Entering room...");
@@ -157,48 +183,29 @@ void *messageSender(void *arg){
 			roomName = strtok(0, "\0");
 			if (roomName != NULL) {
 				strcpy(packet.buffer, roomName);
-				packet.option = 5;
+				packet.type = JOIN;
 				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 			}else
 				puts("Entrada invalida. Nao foi possivel entrar na sala.");
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
-			packet.option = 5;
+			packet.type = LEAVE;
 			strcpy(packet.buffer, "noRoom");
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}else if(strncmp(userInput, "/help", 5) == 0){
 			puts(helpMessage);
 		}else if(strncmp(userInput, "/quit", 5) == 0){
 			puts("Disconnecting...");
-			packet.option = 10;
+			packet.type = QUIT;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 			isConnected = 0;
 		}else{
 			char *msg = userInput;
 			strcpy(packet.buffer, msg);
-			packet.option = 2;
+			packet.type = MESSAGE;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}
 		
-	}
-	pthread_exit(0);
-}
-
-void *messageReceiver(void *arg){
-	int receivedMessage;
-	struct PACKET receivedPacket;
-	
-	while(isConnected) {
-		
-		receivedMessage = recv(socket_desc, (void *)&receivedPacket, sizeof(struct PACKET) , 0);
-		if(!receivedMessage) {
-			puts("Connection with server terminated");
-			isConnected = 0;
-			pthread_exit(0);
-		}	
-		if(receivedMessage > 0)
-			printf("[%s]: %s \n", receivedPacket.nickname, receivedPacket.buffer);	
-		memset(&receivedPacket, 0, sizeof(struct PACKET));
 	}
 	pthread_exit(0);
 }
