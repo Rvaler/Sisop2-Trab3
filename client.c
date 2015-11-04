@@ -194,8 +194,7 @@ void *messageSender(void *arg){
 void *messageReceiver(void *arg){
 	int receivedMessage;
 	struct PACKET receivedPacket;
-	//puts("waiting for incoming messages");
-
+	
 	while(isConnected) {
 		
 		receivedMessage = recv(socket_desc, (void *)&receivedPacket, sizeof(struct PACKET) , 0);
