@@ -105,7 +105,7 @@ void *client_handler(void *fd) {
             break;
         }
         
-        if(packet.type ==  CHANGENICK) {
+        if(packet.type ==  CHANGENICK) { // troca de nick
             printf("Nickame setado para %s\n", packet.buffer);
             pthread_mutex_lock(&clientListMutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next)
@@ -116,7 +116,7 @@ void *client_handler(void *fd) {
                 }
             pthread_mutex_unlock(&clientListMutex);
         }  
-        if(packet.type == MESSAGE) { // SEND
+        if(packet.type == MESSAGE) { // envio de mensagem
 	    printf("id da sala: %d usuario: %s mensagem: %s\n", clientThread.roomID, clientThread.nickname, packet.buffer);
             pthread_mutex_lock(&clientListMutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
@@ -129,7 +129,7 @@ void *client_handler(void *fd) {
                 sent = write(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET));
             }
             pthread_mutex_unlock(&clientListMutex);
-        }else if(packet.type == CREATE) { // CREATE ROOM
+        }else if(packet.type == CREATE) { // Criacao de nova sala
             puts("Requisicao de criacao de nova sala");      
             struct ROOM* newRoom = (struct ROOM*) malloc(sizeof(struct ROOM));
             strcpy(newRoom->roomName, packet.buffer);  
@@ -156,7 +156,7 @@ void *client_handler(void *fd) {
 		        }
 		    pthread_mutex_unlock(&clientListMutex);
 	    }
-	}else if(packet.type == LIST) { // LIST ROOMS
+	}else if(packet.type == LIST) { // Usuario solicitou listagem de salas
 		puts("Requisicao de listagem de salas");  
 		struct PACKET spacket;	 
 		memset(&spacket, 0, sizeof(struct PACKET));       
@@ -173,7 +173,7 @@ void *client_handler(void *fd) {
 		strcpy(spacket.buffer, msg);
 		strcpy(spacket.nickname, "SERVER");
 		sent = write(clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET));
-        }else if(packet.type == JOIN){ // JOIN ROOM
+        }else if(packet.type == JOIN){ // usuario executou join ou leave
 	    puts("Requisicao de mudanca de sala"); 
 	    int oldRoom = -1, exitRoom = 0, idRoom = 0;
             if (strcmp(packet.buffer,"noRoom") == 0){ 
@@ -225,15 +225,13 @@ void *client_handler(void *fd) {
 		        }
 		    }
 	    } 
-        }else if(packet.type == QUIT) { // QUIT FROM SERVER
+        }else if(packet.type == QUIT) { // Cliente solicitou desconexao
             printf("%s se desconectou\n", clientThread.nickname);
             pthread_mutex_lock(&clientListMutex);
             list_delete(&client_list, &clientThread);
             pthread_mutex_unlock(&clientListMutex);
             break;
-        }/*else {
-            fprintf(stderr, "Garbage data from [%d] %s...\n", clientThread.sockfd, clientThread.nickname);
-        }*/
+        }
     }
  
     close(clientThread.sockfd);
