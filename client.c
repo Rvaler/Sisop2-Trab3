@@ -20,7 +20,11 @@ int socket_desc;
 int port;
 struct hostent *server;
 pthread_t receiverThread, senderThread;
-//char *inAddress = "201.21.215.114";
+char *helpMessage = ("\n/nickname          - Para trocar de nick"
+				     "\n/create NomeDaSala - Para criar uma nova sala"
+				     "\n/join NomeDaSala   - Para se conectar a uma sala existente"
+				     "\n/leave             - Para deixar uma sala"
+				     "\n/help              - Ajuda");
 
 struct USER {
 	char nickname[NICKLENGHT];
@@ -73,7 +77,7 @@ void initUser(){
 	strcpy(packet.buffer, myself.nickname);
 	packet.option = 1;
 	int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
-	puts("¡Hola! Voce esta conectado ao servidor. Para participar de um chat deve se conectar a uma sala. \nPara trocar de nick: /nickname\nPara criar uma nova sala: /create NomeDaSala\nPara se conectar a uma sala existente: /join NomeDaSala\nPara deixar uma sala: /leave");
+	puts(helpMessage);
 }
 
 int verifyInput(int argc, char *argv[]) {
@@ -182,7 +186,8 @@ void *messageSender(void *arg){
 			strcpy(packet.buffer, "noRoom");
 			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
-			
+		}else if(strncmp(userInput, "/help", 5) == 0){
+			puts(helpMessage);
 		}else{
 			struct PACKET packet;
 
