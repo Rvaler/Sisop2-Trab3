@@ -120,6 +120,9 @@ int connectToServer(int argc, char *argv[]) {
 
 void *messageSender(void *arg){
 	int contador = 0;
+	struct PACKET packet;
+	memset(&packet, 0, sizeof(struct PACKET));
+
 	while(gets(userInput) && isConnected) {
 		
 		if(strncmp(userInput, "/nickname", 9) == 0){
@@ -128,8 +131,6 @@ void *messageSender(void *arg){
 			memset(myself.nickname, 0, sizeof(char) * NICKLENGHT);
 			if (nickPointer != NULL) {
 				strcpy(myself.nickname, nickPointer);
-				struct PACKET packet;
-				memset(&packet, 0, sizeof(struct PACKET));
 				strcpy(packet.nickname, myself.nickname);
 				strcpy(packet.buffer, nickPointer);
 				packet.option = 1;
@@ -143,18 +144,14 @@ void *messageSender(void *arg){
 			puts("Creating room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, " ");
-
-			struct PACKET packet;
 			char *msg = roomName;
-			memset(&packet, 0, sizeof(struct PACKET));
 			strcpy(packet.buffer, msg);
 			packet.option = 3;
 		
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 
 		}else if(strncmp(userInput, "/list", 5) == 0) {
-			struct PACKET packet;
-			memset(&packet, 0, sizeof(struct PACKET));
+			
 			packet.option = 4;
 		
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
@@ -164,8 +161,6 @@ void *messageSender(void *arg){
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, " ");
 
-			struct PACKET packet;
-			memset(&packet, 0, sizeof(struct PACKET));
 			packet.option = 5;
 			strcpy(packet.buffer, roomName);
 			
@@ -174,8 +169,6 @@ void *messageSender(void *arg){
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
 			
-			struct PACKET packet;
-			memset(&packet, 0, sizeof(struct PACKET));
 			packet.option = 5;
 			strcpy(packet.buffer, "noRoom");
 			

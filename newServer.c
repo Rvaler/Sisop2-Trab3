@@ -249,7 +249,7 @@ void *client_handler(void *fd) {
             pthread_mutex_unlock(&clientlist_mutex);
             break;
         }
-        printf("[%d] %i %s %s\n", threadinfo.sockfd, packet.option, packet.nickname, packet.buffer);
+        printf("[%d] %i %s %s\n", threadinfo.sockfd, packet.option, threadinfo.nickname, packet.buffer);
         
         if(packet.option ==  1) {
             printf("Set alias to %s\n", packet.buffer);
@@ -292,7 +292,7 @@ void *client_handler(void *fd) {
             	
     	    pthread_mutex_lock(&clientlist_mutex);
 
-	       // Atualiza nova roomID na lista de clientes 
+	    // Atualiza nova roomID na lista de clientes 
             for(curr = client_list.head; curr != NULL; curr = curr->next){ 
                 if(compare(&curr->threadinfo, &threadinfo) == 0) {
                     curr->threadinfo.roomID = newRoom->roomID;
@@ -309,44 +309,42 @@ void *client_handler(void *fd) {
         }
 
         else if(packet.option == 5){ // JOIN ROOM
-            puts("Join request");
+            int oldRoom = -1, exitRoom = 0, idRoom = 0;
 	    
-        char userEntered[NICKLENGHT];
-        int exitRoom = 0;
-	    int idRoom = 0;
+            if (strcmp(packet.buffer,"noRoom") == 0){ 
+		exitRoom = 1;
+		oldRoom = threadinfo.roomID;
+	    }
 	    for(aux = room_list.head; aux != NULL; aux = aux->next)
 		if(strcmp(aux->roomName, packet.buffer) == 0)
-        	idRoom = aux->roomID;
-	    printf("RoomId:%i\n", idRoom);
-    	pthread_mutex_lock(&clientlist_mutex);
+        		idRoom = aux->roomID;
+
+    	    pthread_mutex_lock(&clientlist_mutex);
 	    // Atualiza nova roomID na lista de clientes 
             for(curr = client_list.head; curr != NULL; curr = curr->next){
                 if(compare(&curr->threadinfo, &threadinfo) == 0) {
-                    if (strcmp(packet.buffer,"noRoom") == 0) {
-                        exitRoom = 1;
-                    }
                     curr->threadinfo.roomID = idRoom;
                     threadinfo.roomID = idRoom;
-                    strcpy(userEntered,curr->threadinfo.nickname);
                     break;
                 }
             }
+	    struct PACKET spacket;
+            memset(&spacket, 0, sizeof(struct PACKET));
+	    strcpy(spacket.nickname, "SERVER");
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
-                struct PACKET spacket;
-                memset(&spacket, 0, sizeof(struct PACKET));
-        //printf("\threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.roomID, curr->threadinfo.roomID);
-                if ((threadinfo.roomID == curr->threadinfo.roomID && threadinfo.roomID != 0) || (exitRoom)) {
-                    if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
-                    spacket.option = 2;
-        //spacket.roomID = packet.roomID;
-                    strcpy(spacket.nickname, userEntered);
-                    char msg[MESSAGE_SIZE];
-                    if (exitRoom)
-                        strcpy(msg,"left the room");
-                    else
-                        strcpy(msg,"entered the room");
-                    strcpy(spacket.buffer, msg);
-                    sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+		if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
+                if (threadinfo.roomID == curr->threadinfo.roomID && threadinfo.roomID != 0){ 
+			char msg[MESSAGE_SIZE];			
+			strcpy(msg, threadinfo.nickname);
+                        strcat(msg, " entered the room");
+                    	strcpy(spacket.buffer, msg);
+                    	sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+		}else if (exitRoom && curr->threadinfo.roomID == oldRoom) { 
+                    	char msg[MESSAGE_SIZE];
+                    	strcpy(msg, threadinfo.nickname);
+		    	strcat(msg, " left the room");
+                    	strcpy(spacket.buffer, msg);
+                    	sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
                 }
             }
             pthread_mutex_unlock(&clientlist_mutex);
