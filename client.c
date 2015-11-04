@@ -28,17 +28,11 @@ char *helpMessage =                 ("\n/nickname NovoNick - Para trocar de nick
 				     "\n/quit              - Para se desconectar"
 				     "\n/help              - Ajuda");
 
-struct USER {
-	char nickname[NICKLENGHT];
-};
-
 struct PACKET {
 	int option;
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
 };
-
-struct USER myself;
 
 int connectToServer(int argc, char *argv[]);
 void *messageReceiver(void *arg);
@@ -68,19 +62,20 @@ int main(int argc , char *argv[])
 }
 
 void initUser(){
+	char *nickPointer, nickname[NICKLENGHT];
 	puts("Connected. \nEscolha um nickname: "); 
-	fgets(myself.nickname, NICKLENGHT,  stdin);
-	char *nickPointer;
-	if ((nickPointer=strchr(myself.nickname, '\n')) != NULL)
+	fgets(nickname, NICKLENGHT,  stdin);
+	if ((nickPointer=strchr(nickname, '\n')) != NULL)
     		*nickPointer = '\0';
-	//myself.nickname = strtok(nickPointer, "\n");
 	isConnected = 1;
 	struct PACKET packet;
 	memset(&packet, 0, sizeof(struct PACKET));
-	strcpy(packet.nickname, myself.nickname);
-	strcpy(packet.buffer, myself.nickname);
-	packet.option = 1;
-	int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+	if (strcmp(nickname, "") != 0) {
+		strcpy(packet.buffer, nickname);
+		packet.option = 1;
+		int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+	}else
+		puts("Entrada invalida. Nickname nao modificado. Uilize o comando /nickname para alterar.");
 	puts(helpMessage);
 }
 
@@ -137,25 +132,22 @@ void *messageSender(void *arg){
 		if(strncmp(userInput, "/nickname", 9) == 0){
 			char *nickPointer = strtok(userInput, " ");
 			nickPointer = strtok(0, "\0");
-			memset(myself.nickname, 0, sizeof(char) * NICKLENGHT);
 			if (nickPointer != NULL) {
-				strcpy(myself.nickname, nickPointer);
-				strcpy(packet.nickname, myself.nickname);
 				strcpy(packet.buffer, nickPointer);
 				packet.option = 1;
 				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
-				printf("Nickname modified to: %s\n", myself.nickname);
-			}else{
-				puts("It was not possible to modify your nickname");
-			}
+			}else
+				puts("Entrada invalida. Nickname nao modificado.");
 		}else if(strncmp(userInput, "/create", 7) == 0){
 			puts("Creating room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, "\0");
-			char *msg = roomName;
-			strcpy(packet.buffer, msg);
-			packet.option = 3;
-			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+			if (roomName != NULL) {
+				strcpy(packet.buffer, roomName);
+				packet.option = 3;
+				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+			}else
+				puts("Entrada invalida. Nova sala nao foi criada.");
 		}else if(strncmp(userInput, "/list", 5) == 0) {
 			packet.option = 4;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
@@ -163,9 +155,12 @@ void *messageSender(void *arg){
 			puts("Entering room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, "\0");
-			packet.option = 5;
-			strcpy(packet.buffer, roomName);
-			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+			if (roomName != NULL) {
+				strcpy(packet.buffer, roomName);
+				packet.option = 5;
+				int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+			}else
+				puts("Entrada invalida. Nao foi possivel entrar na sala.");
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
 			packet.option = 5;
@@ -180,7 +175,6 @@ void *messageSender(void *arg){
 			isConnected = 0;
 		}else{
 			char *msg = userInput;
-			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
 			packet.option = 2;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);

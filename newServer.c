@@ -14,7 +14,7 @@
 #define MESSAGE_SIZE 256
 #define ERROR -1
 
-#define MAXCLIENTS 8
+#define MAXCLIENTS 15
 
 #define IP "127.0.0.1"
 #define PORT 8080
@@ -46,7 +46,6 @@ struct ROOM
 };
 struct ROOMLIST {
     struct ROOM *head, *tail;
-    int size;
 };
 
 struct ROOM* newRoom(char *name, int id){
@@ -59,7 +58,6 @@ struct ROOM* newRoom(char *name, int id){
 
 void roomListInit(struct ROOMLIST *list){
     list->head = list->tail = NULL;
-    list->size = 0;
 }
 
 int roomListInsert(struct ROOMLIST *list, struct ROOM *room) {
@@ -82,7 +80,6 @@ int roomListDelete(struct ROOMLIST *list, struct ROOM *room) {
         list->head = list->head->next;
         if(list->head == NULL) list->tail = list->head;
         free(temp);
-        list->size--;
         return 0;
     }
     for(curr = list->head; curr->next != NULL; curr = curr->next) {
@@ -91,7 +88,6 @@ int roomListDelete(struct ROOMLIST *list, struct ROOM *room) {
             if(temp == list->tail) list->tail = curr;
             curr->next = curr->next->next;
             free(temp);
-            list->size--;
             return 0;
         }
     }
@@ -100,6 +96,14 @@ int roomListDelete(struct ROOMLIST *list, struct ROOM *room) {
 
 int compareRoom(struct ROOM *a, struct ROOM *b) {
     return a->roomID - b->roomID;
+}
+
+int roomExists(struct ROOMLIST *list, char *roomName) {
+	struct ROOM *current;	
+	for(current = list->head; current != NULL; current = current->next) 
+		if(strcmp(current->roomName, roomName) == 0)
+			return 1;
+	return 0;
 }
 
 int compare(struct CLIENT_THREAD *a, struct CLIENT_THREAD *b) {
@@ -287,24 +291,30 @@ void *client_handler(void *fd) {
             struct ROOM* newRoom = (struct ROOM*) malloc(sizeof(struct ROOM));
             strcpy(newRoom->roomName, packet.buffer);
             
-    	    pthread_mutex_lock(&roomList_mutex);
-            newRoom->roomID = ++roomCounter;
-            roomListInsert(&room_list, newRoom);
-            pthread_mutex_unlock(&roomList_mutex);
-            	
-    	    pthread_mutex_lock(&clientlist_mutex);
-
-	    // Atualiza nova roomID na lista de clientes 
-            for(curr = client_list.head; curr != NULL; curr = curr->next){ 
-                if(compare(&curr->clientThread, &clientThread) == 0) {
-                    curr->clientThread.roomID = newRoom->roomID;
-                    clientThread.roomID = newRoom->roomID;
-                    break;
-                }
-            }
-            pthread_mutex_unlock(&clientlist_mutex);
+	    // Se a sala existe envia pacote informando o problema caso contrario faz o resto e envia sucesso
+	    if (roomExists(&room_list, packet.buffer)){
+		struct PACKET spacket;
+                memset(&spacket, 0, sizeof(struct PACKET));		
+		strcpy(spacket.buffer, "Nao foi possivel criar a sala. Ja existe uma sala com esse nome.");
+		strcpy(spacket.nickname, "SERVER");
+		sent = send(clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+	    }else{
+	    	    pthread_mutex_lock(&roomList_mutex);
+		    newRoom->roomID = ++roomCounter;
+		    roomListInsert(&room_list, newRoom);
+		    pthread_mutex_unlock(&roomList_mutex);
+		    	
+	    	    pthread_mutex_lock(&clientlist_mutex);
+		    // Atualiza nova roomID na lista de clientes 
+		    for(curr = client_list.head; curr != NULL; curr = curr->next)
+		        if(compare(&curr->clientThread, &clientThread) == 0) {
+		            curr->clientThread.roomID = newRoom->roomID;
+		            clientThread.roomID = newRoom->roomID;
+		            break;
+		        }
+		    pthread_mutex_unlock(&clientlist_mutex);
 	    }
-
+	}
         else if(packet.option == 4) { // LIST ROOMS
 		struct PACKET spacket;	 
 		memset(&spacket, 0, sizeof(struct PACKET));       
@@ -312,7 +322,7 @@ void *client_handler(void *fd) {
 		char msg[MESSAGE_SIZE];
 		strcpy(msg, "\nLista de salas:");
 		if (room_list.head->next == NULL)
-			strcpy(msg, "Nenhuma sala criada");
+			strcpy(msg, "Nenhuma sala criada. Utilize o comando /create para criar uma sala.");
 		else
         		for(aux = room_list.head->next; aux != NULL; aux = aux->next){
 				 strcat(msg, "\n");
@@ -331,39 +341,52 @@ void *client_handler(void *fd) {
 		exitRoom = 1;
 		oldRoom = clientThread.roomID;
 	    }
-	    for(aux = room_list.head; aux != NULL; aux = aux->next)
-		if(strcmp(aux->roomName, packet.buffer) == 0)
-        		idRoom = aux->roomID;
+            
+            // Se a sala existe envia pacote informando o problema caso contrario faz o resto e envia sucesso
+	    if ((!roomExists(&room_list, packet.buffer)) && exitRoom == 0){
+		struct PACKET spacket;
+                memset(&spacket, 0, sizeof(struct PACKET));		
+	    	strcpy(spacket.buffer, "Nao foi possivel se conectar. Nao existe nenhuma sala com esse nome.");
+		strcpy(spacket.nickname, "SERVER");
+		sent = send(clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+	    }else{
 
-    	    pthread_mutex_lock(&clientlist_mutex);
-	    // Atualiza nova roomID na lista de clientes 
-            for(curr = client_list.head; curr != NULL; curr = curr->next){
-                if(compare(&curr->clientThread, &clientThread) == 0) {
-                    curr->clientThread.roomID = idRoom;
-                    clientThread.roomID = idRoom;
-                    break;
-                }
-            }
-	    struct PACKET spacket;
-            memset(&spacket, 0, sizeof(struct PACKET));
-	    strcpy(spacket.nickname, "SERVER");
-            for(curr = client_list.head; curr != NULL; curr = curr->next) {
-		if (!compare(&curr->clientThread, &clientThread)) continue; // send to all others
-                if (clientThread.roomID == curr->clientThread.roomID && clientThread.roomID != 0){ 
-			char msg[MESSAGE_SIZE];			
-			strcpy(msg, clientThread.nickname);
-                        strcat(msg, " entrou na sala.");
-                    	strcpy(spacket.buffer, msg);
-                    	sent = send(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
-		}else if (exitRoom && curr->clientThread.roomID == oldRoom) { 
-                    	char msg[MESSAGE_SIZE];
-                    	strcpy(msg, clientThread.nickname);
-		    	strcat(msg, " saiu da sala.");
-                    	strcpy(spacket.buffer, msg);
-                    	sent = send(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
-                }
-            }
-            pthread_mutex_unlock(&clientlist_mutex);
+		    for(aux = room_list.head; aux != NULL; aux = aux->next)
+			if(strcmp(aux->roomName, packet.buffer) == 0)
+				idRoom = aux->roomID;
+
+	    	    pthread_mutex_lock(&clientlist_mutex);
+		    // Atualiza nova roomID na lista de clientes 
+		    for(curr = client_list.head; curr != NULL; curr = curr->next){
+		        if(compare(&curr->clientThread, &clientThread) == 0) {
+		            curr->clientThread.roomID = idRoom;
+		            clientThread.roomID = idRoom;
+		            break;
+		        }
+		    }
+		    pthread_mutex_unlock(&clientlist_mutex);
+
+		    // Avisa os outros usuarios da sala da saida ou entrada de um participante
+		    struct PACKET spacket;
+		    memset(&spacket, 0, sizeof(struct PACKET));
+		    strcpy(spacket.nickname, "SERVER");
+		    for(curr = client_list.head; curr != NULL; curr = curr->next) {
+			if (!compare(&curr->clientThread, &clientThread)) continue; // send to all others
+		        if (clientThread.roomID == curr->clientThread.roomID && clientThread.roomID != 0){ 
+				char msg[MESSAGE_SIZE];			
+				strcpy(msg, clientThread.nickname);
+		                strcat(msg, " entrou na sala.");
+		            	strcpy(spacket.buffer, msg);
+		            	sent = send(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+			}else if (exitRoom && curr->clientThread.roomID == oldRoom) { 
+		            	char msg[MESSAGE_SIZE];
+		            	strcpy(msg, clientThread.nickname);
+			    	strcat(msg, " saiu da sala.");
+		            	strcpy(spacket.buffer, msg);
+		            	sent = send(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+		        }
+		    }
+	    } 
         }  
         
         else if(packet.option == 10) { // QUIT FROM SERVER
