@@ -24,18 +24,18 @@ struct PACKET {
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
 };
-struct THREADINFO {
+struct CLIENT_THREAD {
     pthread_t thread_ID; // thread's pointer
     int sockfd; // socket file descriptor
     char nickname[NICKLENGHT]; // client's alias
     int roomID; // user's current room
 };
-struct LLNODE {
-    struct THREADINFO threadinfo;
-    struct LLNODE *next;
+struct CLIENT_OBJ {
+    struct CLIENT_THREAD clientThread;
+    struct CLIENT_OBJ *next;
 };
-struct LLIST {
-    struct LLNODE *head, *tail;
+struct CLIENTS_LIST {
+    struct CLIENT_OBJ *head, *tail;
     int size;
 };
 struct ROOM
@@ -102,26 +102,26 @@ int compareRoom(struct ROOM *a, struct ROOM *b) {
     return a->roomID - b->roomID;
 }
 
-int compare(struct THREADINFO *a, struct THREADINFO *b) {
+int compare(struct CLIENT_THREAD *a, struct CLIENT_THREAD *b) {
     return a->sockfd - b->sockfd;
 }
  
-void list_init(struct LLIST *list) {
+void list_init(struct CLIENTS_LIST *list) {
     list->head = list->tail = NULL;
     list->size = 0;
 }
 
-int list_insert(struct LLIST *list, struct THREADINFO *thr_info) {
+int list_insert(struct CLIENTS_LIST *list, struct CLIENT_THREAD *thr_info) {
     if(list->size == MAXCLIENTS) return ERROR;
     if(list->head == NULL) {
-        list->head = (struct LLNODE *)malloc(sizeof(struct LLNODE));
-        list->head->threadinfo = *thr_info;
+        list->head = (struct CLIENT_OBJ *)malloc(sizeof(struct CLIENT_OBJ));
+        list->head->clientThread = *thr_info;
         list->head->next = NULL;
         list->tail = list->head;
     }
     else {
-        list->tail->next = (struct LLNODE *)malloc(sizeof(struct LLNODE));
-        list->tail->next->threadinfo = *thr_info;
+        list->tail->next = (struct CLIENT_OBJ *)malloc(sizeof(struct CLIENT_OBJ));
+        list->tail->next->clientThread = *thr_info;
         list->tail->next->next = NULL;
         list->tail = list->tail->next;
     }
@@ -129,10 +129,10 @@ int list_insert(struct LLIST *list, struct THREADINFO *thr_info) {
     return 0;
 }
  
-int list_delete(struct LLIST *list, struct THREADINFO *thr_info) {
-    struct LLNODE *curr, *temp;
+int list_delete(struct CLIENTS_LIST *list, struct CLIENT_THREAD *thr_info) {
+    struct CLIENT_OBJ *curr, *temp;
     if(list->head == NULL) return ERROR;
-    if(compare(thr_info, &list->head->threadinfo) == 0) {
+    if(compare(thr_info, &list->head->clientThread) == 0) {
         temp = list->head;
         list->head = list->head->next;
         if(list->head == NULL) list->tail = list->head;
@@ -141,7 +141,7 @@ int list_delete(struct LLIST *list, struct THREADINFO *thr_info) {
         return 0;
     }
     for(curr = list->head; curr->next != NULL; curr = curr->next) {
-        if(compare(thr_info, &curr->next->threadinfo) == 0) {
+        if(compare(thr_info, &curr->next->clientThread) == 0) {
             temp = curr->next;
             if(temp == list->tail) list->tail = curr;
             curr->next = curr->next->next;
@@ -161,8 +161,8 @@ void printRoomList(struct ROOMLIST *list) {
 }
 
 int sockfd, newfd;
-struct THREADINFO thread_info[MAXCLIENTS];
-struct LLIST client_list;
+struct CLIENT_THREAD thread_info[MAXCLIENTS];
+struct CLIENTS_LIST client_list;
 pthread_mutex_t clientlist_mutex;
 
 int roomCounter = 0;
@@ -219,46 +219,46 @@ int main(int argc, char **argv) {
                 continue;
             }
             puts("Connection requested received...");
-            struct THREADINFO threadinfo;
+            struct CLIENT_THREAD clientThread;
 	    
-            threadinfo.sockfd = newfd;
-            threadinfo.roomID = globalRoom->roomID; // global room
-            strcpy(threadinfo.nickname, "Undefined");
+            clientThread.sockfd = newfd;
+            clientThread.roomID = globalRoom->roomID; // global room
+            strcpy(clientThread.nickname, "Undefined");
             pthread_mutex_lock(&clientlist_mutex);
 	    
-            list_insert(&client_list, &threadinfo);
+            list_insert(&client_list, &clientThread);
             pthread_mutex_unlock(&clientlist_mutex);
-            pthread_create(&threadinfo.thread_ID, NULL, client_handler, (void *)&threadinfo);
+            pthread_create(&clientThread.thread_ID, NULL, client_handler, (void *)&clientThread);
         }
     }
     return 0;
 }
 
 void *client_handler(void *fd) {
-    struct THREADINFO threadinfo = *(struct THREADINFO *)fd;
+    struct CLIENT_THREAD clientThread = *(struct CLIENT_THREAD *)fd;
     struct PACKET packet;
-    struct LLNODE *curr;
+    struct CLIENT_OBJ *curr;
     struct ROOM *aux;
     int bytes, sent;
 
     while(1) {
-        bytes = recv(threadinfo.sockfd, (void *)&packet, sizeof(struct PACKET), 0);
+        bytes = recv(clientThread.sockfd, (void *)&packet, sizeof(struct PACKET), 0);
         if(!bytes) {
-            fprintf(stderr, "Connection lost from [%d] %s...\n", threadinfo.sockfd, threadinfo.nickname);
+            fprintf(stderr, "Connection lost from [%d] %s...\n", clientThread.sockfd, clientThread.nickname);
             pthread_mutex_lock(&clientlist_mutex);
-            list_delete(&client_list, &threadinfo);
+            list_delete(&client_list, &clientThread);
             pthread_mutex_unlock(&clientlist_mutex);
             break;
         }
-        printf("[%d] %i %s %s\n", threadinfo.sockfd, packet.option, packet.nickname, packet.buffer);
+        printf("[%d] %i %s %s\n", clientThread.sockfd, packet.option, packet.nickname, packet.buffer);
         
         if(packet.option ==  1) {
             printf("Set alias to %s\n", packet.buffer);
             pthread_mutex_lock(&clientlist_mutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
-                if(compare(&curr->threadinfo, &threadinfo) == 0) {
-                    strcpy(curr->threadinfo.nickname, packet.buffer);
-                    strcpy(threadinfo.nickname, packet.buffer);
+                if(compare(&curr->clientThread, &clientThread) == 0) {
+                    strcpy(curr->clientThread.nickname, packet.buffer);
+                    strcpy(clientThread.nickname, packet.buffer);
                     break;
                 }
             }
@@ -270,13 +270,13 @@ void *client_handler(void *fd) {
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
-		        printf("%s threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.nickname, threadinfo.roomID, curr->threadinfo.roomID);
-		        if (threadinfo.roomID != curr->threadinfo.roomID || threadinfo.roomID == 0)  continue;
-                if (!compare(&curr->threadinfo, &threadinfo)) continue; 
+		        printf("%s clientThread.roomID: %i curr->clientThread.roomID %i\n", clientThread.nickname, clientThread.roomID, curr->clientThread.roomID);
+		        if (clientThread.roomID != curr->clientThread.roomID || clientThread.roomID == 0)  continue;
+                if (!compare(&curr->clientThread, &clientThread)) continue; 
                 spacket.option = 2;
-                strcpy(spacket.nickname, threadinfo.nickname);
+                strcpy(spacket.nickname, clientThread.nickname);
                 strcpy(spacket.buffer, packet.buffer);
-                sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+                sent = send(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
             }
             pthread_mutex_unlock(&clientlist_mutex);
         }
@@ -295,9 +295,9 @@ void *client_handler(void *fd) {
 
 	       // Atualiza nova roomID na lista de clientes 
             for(curr = client_list.head; curr != NULL; curr = curr->next){ 
-                if(compare(&curr->threadinfo, &threadinfo) == 0) {
-                    curr->threadinfo.roomID = newRoom->roomID;
-                    threadinfo.roomID = newRoom->roomID;
+                if(compare(&curr->clientThread, &clientThread) == 0) {
+                    curr->clientThread.roomID = newRoom->roomID;
+                    clientThread.roomID = newRoom->roomID;
                     break;
                 }
             }
@@ -322,22 +322,22 @@ void *client_handler(void *fd) {
     	pthread_mutex_lock(&clientlist_mutex);
 	    // Atualiza nova roomID na lista de clientes 
             for(curr = client_list.head; curr != NULL; curr = curr->next){
-                if(compare(&curr->threadinfo, &threadinfo) == 0) {
+                if(compare(&curr->clientThread, &clientThread) == 0) {
                     if (strcmp(packet.buffer,"noRoom") == 0) {
                         exitRoom = 1;
                     }
-                    curr->threadinfo.roomID = idRoom;
-                    threadinfo.roomID = idRoom;
-                    strcpy(userEntered,curr->threadinfo.nickname);
+                    curr->clientThread.roomID = idRoom;
+                    clientThread.roomID = idRoom;
+                    strcpy(userEntered,curr->clientThread.nickname);
                     break;
                 }
             }
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
-        //printf("\threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.roomID, curr->threadinfo.roomID);
-                if ((threadinfo.roomID == curr->threadinfo.roomID && threadinfo.roomID != 0) || (exitRoom)) {
-                    if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
+        //printf("\clientThread.roomID: %i curr->clientThread.roomID %i\n", clientThread.roomID, curr->clientThread.roomID);
+                if ((clientThread.roomID == curr->clientThread.roomID && clientThread.roomID != 0) || (exitRoom)) {
+                    if (!compare(&curr->clientThread, &clientThread)) continue; // send to all others
                     spacket.option = 2;
         //spacket.roomID = packet.roomID;
                     strcpy(spacket.nickname, userEntered);
@@ -347,25 +347,25 @@ void *client_handler(void *fd) {
                     else
                         strcpy(msg,"entered the room");
                     strcpy(spacket.buffer, msg);
-                    sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+                    sent = send(curr->clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
                 }
             }
             pthread_mutex_unlock(&clientlist_mutex);
         }  
         
         else if(packet.option == 10) { // QUIT FROM SERVER
-            printf("[%d] %s has disconnected...\n", threadinfo.sockfd, threadinfo.nickname);
+            printf("[%d] %s has disconnected...\n", clientThread.sockfd, clientThread.nickname);
             pthread_mutex_lock(&clientlist_mutex);
-            list_delete(&client_list, &threadinfo);
+            list_delete(&client_list, &clientThread);
             pthread_mutex_unlock(&clientlist_mutex);
             break;
         }
         else {
-            fprintf(stderr, "Garbage data from [%d] %s...\n", threadinfo.sockfd, threadinfo.nickname);
+            fprintf(stderr, "Garbage data from [%d] %s...\n", clientThread.sockfd, clientThread.nickname);
         }
     }
  
-    close(threadinfo.sockfd);
+    close(clientThread.sockfd);
  
     return NULL;
 }
