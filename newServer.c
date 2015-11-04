@@ -57,41 +57,41 @@ struct ROOM* newRoom(char *name, int id){
 	return room;
 }
 
-void roomListInit(struct ROOMLIST *ll){
-    ll->head = ll->tail = NULL;
-    ll->size = 0;
+void roomListInit(struct ROOMLIST *list){
+    list->head = list->tail = NULL;
+    list->size = 0;
 }
 
-int roomListInsert(struct ROOMLIST *ll, struct ROOM *room) {
+int roomListInsert(struct ROOMLIST *list, struct ROOM *room) {
     room->next = NULL;
-    if (ll->head == NULL){
-        ll->head = room;
-        ll->tail = room;
+    if (list->head == NULL){
+        list->head = room;
+        list->tail = room;
     }else{
-        ll->tail->next = room;
-        ll->tail = room;
+        list->tail->next = room;
+        list->tail = room;
     }
     return 0;
 }
 
-int roomListDelete(struct ROOMLIST *ll, struct ROOM *room) {
+int roomListDelete(struct ROOMLIST *list, struct ROOM *room) {
     struct ROOM *curr, *temp;
-    if(ll->head == NULL) return ERROR;
-    if(compareRoom(room, &ll->head) == 0) {
-        temp = ll->head;
-        ll->head = ll->head->next;
-        if(ll->head == NULL) ll->tail = ll->head;
+    if(list->head == NULL) return ERROR;
+    if(compareRoom(room, &list->head) == 0) {
+        temp = list->head;
+        list->head = list->head->next;
+        if(list->head == NULL) list->tail = list->head;
         free(temp);
-        ll->size--;
+        list->size--;
         return 0;
     }
-    for(curr = ll->head; curr->next != NULL; curr = curr->next) {
+    for(curr = list->head; curr->next != NULL; curr = curr->next) {
         if(compareRoom(room, &curr->next) == 0) {
             temp = curr->next;
-            if(temp == ll->tail) ll->tail = curr;
+            if(temp == list->tail) list->tail = curr;
             curr->next = curr->next->next;
             free(temp);
-            ll->size--;
+            list->size--;
             return 0;
         }
     }
@@ -106,47 +106,47 @@ int compare(struct THREADINFO *a, struct THREADINFO *b) {
     return a->sockfd - b->sockfd;
 }
  
-void list_init(struct LLIST *ll) {
-    ll->head = ll->tail = NULL;
-    ll->size = 0;
+void list_init(struct LLIST *list) {
+    list->head = list->tail = NULL;
+    list->size = 0;
 }
 
-int list_insert(struct LLIST *ll, struct THREADINFO *thr_info) {
-    if(ll->size == MAXCLIENTS) return ERROR;
-    if(ll->head == NULL) {
-        ll->head = (struct LLNODE *)malloc(sizeof(struct LLNODE));
-        ll->head->threadinfo = *thr_info;
-        ll->head->next = NULL;
-        ll->tail = ll->head;
+int list_insert(struct LLIST *list, struct THREADINFO *thr_info) {
+    if(list->size == MAXCLIENTS) return ERROR;
+    if(list->head == NULL) {
+        list->head = (struct LLNODE *)malloc(sizeof(struct LLNODE));
+        list->head->threadinfo = *thr_info;
+        list->head->next = NULL;
+        list->tail = list->head;
     }
     else {
-        ll->tail->next = (struct LLNODE *)malloc(sizeof(struct LLNODE));
-        ll->tail->next->threadinfo = *thr_info;
-        ll->tail->next->next = NULL;
-        ll->tail = ll->tail->next;
+        list->tail->next = (struct LLNODE *)malloc(sizeof(struct LLNODE));
+        list->tail->next->threadinfo = *thr_info;
+        list->tail->next->next = NULL;
+        list->tail = list->tail->next;
     }
-    ll->size++;
+    list->size++;
     return 0;
 }
  
-int list_delete(struct LLIST *ll, struct THREADINFO *thr_info) {
+int list_delete(struct LLIST *list, struct THREADINFO *thr_info) {
     struct LLNODE *curr, *temp;
-    if(ll->head == NULL) return ERROR;
-    if(compare(thr_info, &ll->head->threadinfo) == 0) {
-        temp = ll->head;
-        ll->head = ll->head->next;
-        if(ll->head == NULL) ll->tail = ll->head;
+    if(list->head == NULL) return ERROR;
+    if(compare(thr_info, &list->head->threadinfo) == 0) {
+        temp = list->head;
+        list->head = list->head->next;
+        if(list->head == NULL) list->tail = list->head;
         free(temp);
-        ll->size--;
+        list->size--;
         return 0;
     }
-    for(curr = ll->head; curr->next != NULL; curr = curr->next) {
+    for(curr = list->head; curr->next != NULL; curr = curr->next) {
         if(compare(thr_info, &curr->next->threadinfo) == 0) {
             temp = curr->next;
-            if(temp == ll->tail) ll->tail = curr;
+            if(temp == list->tail) list->tail = curr;
             curr->next = curr->next->next;
             free(temp);
-            ll->size--;
+            list->size--;
             return 0;
         }
     }
@@ -240,6 +240,7 @@ void *client_handler(void *fd) {
     struct LLNODE *curr;
     struct ROOM *aux;
     int bytes, sent;
+
     while(1) {
         bytes = recv(threadinfo.sockfd, (void *)&packet, sizeof(struct PACKET), 0);
         if(!bytes) {
