@@ -19,8 +19,6 @@
 #define IP "127.0.0.1"
 #define PORT 8080
 
-#define OPTLEN 16
-
 struct PACKET {
 	int option;
 	char nickname[NICKLENGHT];
@@ -78,7 +76,7 @@ int roomListInsert(struct ROOMLIST *ll, struct ROOM *room) {
 
 int roomListDelete(struct ROOMLIST *ll, struct ROOM *room) {
     struct ROOM *curr, *temp;
-    if(ll->head == NULL) return -1;
+    if(ll->head == NULL) return ERROR;
     if(compareRoom(room, &ll->head) == 0) {
         temp = ll->head;
         ll->head = ll->head->next;
@@ -97,7 +95,7 @@ int roomListDelete(struct ROOMLIST *ll, struct ROOM *room) {
             return 0;
         }
     }
-    return -1;
+    return ERROR;
 }
 
 int compareRoom(struct ROOM *a, struct ROOM *b) {
@@ -114,7 +112,7 @@ void list_init(struct LLIST *ll) {
 }
 
 int list_insert(struct LLIST *ll, struct THREADINFO *thr_info) {
-    if(ll->size == MAXCLIENTS) return -1;
+    if(ll->size == MAXCLIENTS) return ERROR;
     if(ll->head == NULL) {
         ll->head = (struct LLNODE *)malloc(sizeof(struct LLNODE));
         ll->head->threadinfo = *thr_info;
@@ -133,7 +131,7 @@ int list_insert(struct LLIST *ll, struct THREADINFO *thr_info) {
  
 int list_delete(struct LLIST *ll, struct THREADINFO *thr_info) {
     struct LLNODE *curr, *temp;
-    if(ll->head == NULL) return -1;
+    if(ll->head == NULL) return ERROR;
     if(compare(thr_info, &ll->head->threadinfo) == 0) {
         temp = ll->head;
         ll->head = ll->head->next;
@@ -152,7 +150,7 @@ int list_delete(struct LLIST *ll, struct THREADINFO *thr_info) {
             return 0;
         }
     }
-    return -1;
+    return ERROR;
 }
 
 void printRoomList(struct ROOMLIST *list) {
@@ -185,25 +183,22 @@ int main(int argc, char **argv) {
     pthread_mutex_init(&clientlist_mutex, NULL);
     pthread_mutex_init(&roomList_mutex, NULL);
  
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == ERROR) {
         puts("Error on socket creation");
         return ERROR;
     }
- 
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
     serv_addr.sin_addr.s_addr = inet_addr(IP);
     memset(&(serv_addr.sin_zero), 0, 8);
- 
    
-    if(bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == -1) {
+    if(bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) == ERROR) {
         puts("Error on binding server");
         return ERROR;
     }
- 
     
-    if(listen(sockfd, MAXCLIENTS) == -1) {
+    if(listen(sockfd, MAXCLIENTS) == ERROR) {
         puts("Error on listening");
         return ERROR;
     }
@@ -211,12 +206,11 @@ int main(int argc, char **argv) {
     struct ROOM *globalRoom;
     globalRoom = newRoom("noRoom", 0);
     roomListInsert(&room_list, globalRoom);
-    
 
     printf("Starting listener...\n");
     while(1) {
         sin_size = sizeof(struct sockaddr_in);
-        if((newfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t*)&sin_size)) == -1) {
+        if((newfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t*)&sin_size)) == ERROR) {
             puts("Error on accepting connection");
             return ERROR;
         } else {
