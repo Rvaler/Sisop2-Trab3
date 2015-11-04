@@ -165,7 +165,6 @@ void *messageSender(void *arg){
 			}else
 				puts("Entrada invalida. Nickname nao modificado.");
 		}else if(strncmp(userInput, "/create", 7) == 0){
-			puts("Creating room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, "\0");
 			if (roomName != NULL) {
@@ -178,7 +177,6 @@ void *messageSender(void *arg){
 			packet.type = LIST;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}else if(strncmp(userInput, "/join", 5) == 0) {
-			puts("Entering room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, "\0");
 			if (roomName != NULL) {
@@ -188,14 +186,13 @@ void *messageSender(void *arg){
 			}else
 				puts("Entrada invalida. Nao foi possivel entrar na sala.");
 		}else if(strncmp(userInput, "/leave", 6) == 0){
-			puts("Leaving room...");
 			packet.type = LEAVE;
 			strcpy(packet.buffer, "noRoom");
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}else if(strncmp(userInput, "/help", 5) == 0){
 			puts(helpMessage);
 		}else if(strncmp(userInput, "/quit", 5) == 0){
-			puts("Disconnecting...");
+			puts("Desconectando...");
 			packet.type = QUIT;
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 			isConnected = 0;

@@ -70,10 +70,10 @@ int main(int argc, char **argv) {
             return ERROR;
         } else {
             if(client_list.size == MAXCLIENTS) {
-                puts("Connection full, connection rejected");
+                puts("Sala cheia, a conexao nao sera possivel");
                 continue;
             }
-            puts("Connection requested received...");
+            puts("Novo usuario conectado");
             struct CLIENT_THREAD clientThread;
 	    
             clientThread.sockfd = newfd;
@@ -98,17 +98,15 @@ void *client_handler(void *fd) {
     while(1) {
         bytes = read(clientThread.sockfd, (void *)&packet, sizeof(struct PACKET));
         if(!bytes) {
-            fprintf(stderr, "Connection lost from [%d] %s...\n", clientThread.sockfd, clientThread.nickname);
+            printf("Conexao do usuario %s perdida\n", clientThread.nickname);
             pthread_mutex_lock(&clientListMutex);
             list_delete(&client_list, &clientThread);
             pthread_mutex_unlock(&clientListMutex);
             break;
         }
-
-        printf("[%d] %i %s %s\n", clientThread.sockfd, packet.type, clientThread.nickname, packet.buffer);
         
         if(packet.type ==  CHANGENICK) {
-            printf("Set alias to %s\n", packet.buffer);
+            printf("Nickame setado para %s\n", packet.buffer);
             pthread_mutex_lock(&clientListMutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next)
                 if(compare(&curr->clientThread, &clientThread) == 0) {
@@ -119,11 +117,11 @@ void *client_handler(void *fd) {
             pthread_mutex_unlock(&clientListMutex);
         }  
         if(packet.type == MESSAGE) { // SEND
+	    printf("id da sala: %d usuario: %s mensagem: %s\n", clientThread.roomID, clientThread.nickname, packet.buffer);
             pthread_mutex_lock(&clientListMutex);
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
-		printf("%s Thread.roomID: %i curr->Thread.roomID %i\n", clientThread.nickname, clientThread.roomID, curr->clientThread.roomID);
 		if (clientThread.roomID != curr->clientThread.roomID || clientThread.roomID == 0)  continue;
                 if (!compare(&curr->clientThread, &clientThread)) continue; 
                 strcpy(spacket.nickname, clientThread.nickname);
@@ -132,11 +130,9 @@ void *client_handler(void *fd) {
             }
             pthread_mutex_unlock(&clientListMutex);
         }else if(packet.type == CREATE) { // CREATE ROOM
-            puts("Creating new room");
-            printf("room name %s", packet.buffer);
+            puts("Requisicao de criacao de nova sala");      
             struct ROOM* newRoom = (struct ROOM*) malloc(sizeof(struct ROOM));
-            strcpy(newRoom->roomName, packet.buffer);
-            
+            strcpy(newRoom->roomName, packet.buffer);  
 	    // Verifica se ja existe alguma sala com o nome informado
 	    if (roomExists(&room_list, packet.buffer)){
 		struct PACKET spacket;
@@ -149,7 +145,7 @@ void *client_handler(void *fd) {
 		    newRoom->roomID = ++roomCounter;
 		    roomListInsert(&room_list, newRoom);
 		    pthread_mutex_unlock(&roomListMutex);
-		    
+		    printf("Criada nova sala %s\n", packet.buffer);
 		    // Atualiza nova roomID na lista de clientes 	
 	    	    pthread_mutex_lock(&clientListMutex);
 		    for(curr = client_list.head; curr != NULL; curr = curr->next)
@@ -161,9 +157,9 @@ void *client_handler(void *fd) {
 		    pthread_mutex_unlock(&clientListMutex);
 	    }
 	}else if(packet.type == LIST) { // LIST ROOMS
+		puts("Requisicao de listagem de salas");  
 		struct PACKET spacket;	 
 		memset(&spacket, 0, sizeof(struct PACKET));       
-		puts("Listing rooms");
 		char msg[MESSAGE_SIZE];
 		strcpy(msg, "\nLista de salas:");
 		if (room_list.head->next == NULL)
@@ -173,20 +169,20 @@ void *client_handler(void *fd) {
 				 strcat(msg, "\n");
 				strcat(msg, aux->roomName);
 			}
+		puts(msg);
 		strcpy(spacket.buffer, msg);
 		strcpy(spacket.nickname, "SERVER");
-		printf("%s\n", msg);
 		sent = write(clientThread.sockfd, (void *)&spacket, sizeof(struct PACKET));
         }else if(packet.type == JOIN){ // JOIN ROOM
-            int oldRoom = -1, exitRoom = 0, idRoom = 0;
-	    
+	    puts("Requisicao de mudanca de sala"); 
+	    int oldRoom = -1, exitRoom = 0, idRoom = 0;
             if (strcmp(packet.buffer,"noRoom") == 0){ 
 		exitRoom = 1;
 		oldRoom = clientThread.roomID;
 	    }
-            
             // Verifica se a sala a qual o usuario esta tentando se conectar existe
 	    if ((!roomExists(&room_list, packet.buffer)) && exitRoom == 0){
+		puts("Nao foi possivel se conectar. Nao existe nenhuma sala com esse nome."); 		
 		struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));		
 	    	strcpy(spacket.buffer, "Nao foi possivel se conectar. Nao existe nenhuma sala com esse nome.");
@@ -230,7 +226,7 @@ void *client_handler(void *fd) {
 		    }
 	    } 
         }else if(packet.type == QUIT) { // QUIT FROM SERVER
-            printf("[%d] %s has disconnected...\n", clientThread.sockfd, clientThread.nickname);
+            printf("%s se desconectou\n", clientThread.nickname);
             pthread_mutex_lock(&clientListMutex);
             list_delete(&client_list, &clientThread);
             pthread_mutex_unlock(&clientListMutex);
