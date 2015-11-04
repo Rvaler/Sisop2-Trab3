@@ -20,7 +20,8 @@ int socket_desc;
 int port;
 struct hostent *server;
 pthread_t receiverThread, senderThread;
-char *helpMessage = ("\n/nickname          - Para trocar de nick"
+char *helpMessage =                 ("\n/nickname NovoNick - Para trocar de nick"
+				     "\n/list              - Para ver todas as salas"
 				     "\n/create NomeDaSala - Para criar uma nova sala"
 				     "\n/join NomeDaSala   - Para se conectar a uma sala existente"
 				     "\n/leave             - Para deixar uma sala"
@@ -139,7 +140,6 @@ void *messageSender(void *arg){
 			}else{
 				puts("It was not possible to modify your nickname");
 			}
-
 		}else if(strncmp(userInput, "/create", 7) == 0){
 			puts("Creating room...");
 			char *roomName = strtok(userInput, " ");
@@ -147,43 +147,31 @@ void *messageSender(void *arg){
 			char *msg = roomName;
 			strcpy(packet.buffer, msg);
 			packet.option = 3;
-		
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
-
 		}else if(strncmp(userInput, "/list", 5) == 0) {
-			
 			packet.option = 4;
-		
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
-		
 		}else if(strncmp(userInput, "/join", 5) == 0) {
 			puts("Entering room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, " ");
-
 			packet.option = 5;
 			strcpy(packet.buffer, roomName);
-			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
-
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
-			
 			packet.option = 5;
 			strcpy(packet.buffer, "noRoom");
-			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}else if(strncmp(userInput, "/help", 5) == 0){
 			puts(helpMessage);
 		}else{
 			struct PACKET packet;
-
 			char *msg = userInput;
 			memset(&packet, 0, sizeof(struct PACKET));
 			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
 			packet.option = 2;
-
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}
 		
