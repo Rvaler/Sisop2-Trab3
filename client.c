@@ -25,6 +25,7 @@ char *helpMessage =                 ("\n/nickname NovoNick - Para trocar de nick
 				     "\n/create NomeDaSala - Para criar uma nova sala"
 				     "\n/join NomeDaSala   - Para se conectar a uma sala existente"
 				     "\n/leave             - Para deixar uma sala"
+				     "\n/quit              - Para se desconectar"
 				     "\n/help              - Ajuda");
 
 struct USER {
@@ -68,7 +69,11 @@ int main(int argc , char *argv[])
 
 void initUser(){
 	puts("Connected. \nEscolha um nickname: "); 
-	gets(myself.nickname);
+	fgets(myself.nickname, NICKLENGHT,  stdin);
+	char *nickPointer;
+	if ((nickPointer=strchr(myself.nickname, '\n')) != NULL)
+    		*nickPointer = '\0';
+	//myself.nickname = strtok(nickPointer, "\n");
 	isConnected = 1;
 	struct PACKET packet;
 	memset(&packet, 0, sizeof(struct PACKET));
@@ -124,11 +129,14 @@ void *messageSender(void *arg){
 	struct PACKET packet;
 	memset(&packet, 0, sizeof(struct PACKET));
 
-	while(gets(userInput) && isConnected) {
-		
+	while(isConnected && fgets(userInput, MESSAGE_SIZE, stdin)) {
+		char *pos;
+		if ((pos=strchr(userInput, '\n')) != NULL)
+    			*pos = '\0';
+
 		if(strncmp(userInput, "/nickname", 9) == 0){
 			char *nickPointer = strtok(userInput, " ");
-			nickPointer = strtok(0, " ");
+			nickPointer = strtok(0, "\0");
 			memset(myself.nickname, 0, sizeof(char) * NICKLENGHT);
 			if (nickPointer != NULL) {
 				strcpy(myself.nickname, nickPointer);
@@ -143,7 +151,7 @@ void *messageSender(void *arg){
 		}else if(strncmp(userInput, "/create", 7) == 0){
 			puts("Creating room...");
 			char *roomName = strtok(userInput, " ");
-			roomName = strtok(0, " ");
+			roomName = strtok(0, "\0");
 			char *msg = roomName;
 			strcpy(packet.buffer, msg);
 			packet.option = 3;
@@ -154,7 +162,7 @@ void *messageSender(void *arg){
 		}else if(strncmp(userInput, "/join", 5) == 0) {
 			puts("Entering room...");
 			char *roomName = strtok(userInput, " ");
-			roomName = strtok(0, " ");
+			roomName = strtok(0, "\0");
 			packet.option = 5;
 			strcpy(packet.buffer, roomName);
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
@@ -165,10 +173,13 @@ void *messageSender(void *arg){
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}else if(strncmp(userInput, "/help", 5) == 0){
 			puts(helpMessage);
+		}else if(strncmp(userInput, "/quit", 5) == 0){
+			puts("Disconnecting...");
+			packet.option = 10;
+			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
+			isConnected = 0;
 		}else{
-			struct PACKET packet;
 			char *msg = userInput;
-			memset(&packet, 0, sizeof(struct PACKET));
 			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
 			packet.option = 2;
