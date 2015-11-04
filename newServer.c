@@ -314,6 +314,8 @@ void *client_handler(void *fd) {
         else if(packet.option == 5){
             puts("Join request");
 	    
+        char userEntered[NICKLENGHT];
+        int exitRoom = 0;
 	    int idRoom = 0;
 	    for(aux = room_list.head; aux != NULL; aux = aux->next)
 		if(strcmp(aux->roomName, packet.buffer) == 0)
@@ -323,12 +325,37 @@ void *client_handler(void *fd) {
 	    // Atualiza nova roomID na lista de clientes 
             for(curr = client_list.head; curr != NULL; curr = curr->next)
                 if(compare(&curr->threadinfo, &threadinfo) == 0) {
+                    if (strcmp(packet.buffer,"noRoom") == 0) {
+                        exitRoom = 1;
+                    }
                     curr->threadinfo.roomID = idRoom;
                     threadinfo.roomID = idRoom;
+                    strcpy(userEntered,curr->threadinfo.nickname);
                     break;
                 }
+
+            for(curr = client_list.head; curr != NULL; curr = curr->next) {
+                struct PACKET spacket;
+                memset(&spacket, 0, sizeof(struct PACKET));
+        //printf("\threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.roomID, curr->threadinfo.roomID);
+        if ((threadinfo.roomID == curr->threadinfo.roomID && threadinfo.roomID != 0) || (exitRoom)) {
+                if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
+                spacket.option = 2;
+        //spacket.roomID = packet.roomID;
+                strcpy(spacket.nickname, userEntered);
+                char msg[MESSAGE_SIZE];
+                if (exitRoom)
+                    strcpy(msg,"left the room");
+                else
+                    strcpy(msg,"entered the room");
+                strcpy(spacket.buffer, msg);
+                sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+            }
+            }
             pthread_mutex_unlock(&clientlist_mutex);
         }
+            
+        
         else if(packet.option == 10) { // QUIT FROM SERVER
             printf("[%d] %s has disconnected...\n", threadinfo.sockfd, threadinfo.nickname);
             pthread_mutex_lock(&clientlist_mutex);
