@@ -28,11 +28,9 @@ char *helpMessage = ("\n/nickname          - Para trocar de nick"
 
 struct USER {
 	char nickname[NICKLENGHT];
-	//int roomID;
 };
 
 struct PACKET {
-	//int roomID;
 	int option;
 	char nickname[NICKLENGHT];
 	char buffer[MESSAGE_SIZE];
@@ -51,7 +49,7 @@ int main(int argc , char *argv[])
 	if(verifyInput(argc, argv) < 0)
 		return ERROR;
 
-	if(connectToServer(argc, argv) == -1){
+	if(connectToServer(argc, argv) == ERROR){
 		puts("Error in connection");
 		return ERROR;
 	}
@@ -142,7 +140,7 @@ void *messageSender(void *arg){
 			}
 
 		}else if(strncmp(userInput, "/create", 7) == 0){
-			puts("creating room");
+			puts("Creating room...");
 			char *roomName = strtok(userInput, " ");
 			roomName = strtok(0, " ");
 
@@ -151,7 +149,6 @@ void *messageSender(void *arg){
 			memset(&packet, 0, sizeof(struct PACKET));
 			strcpy(packet.buffer, msg);
 			packet.option = 3;
-			//packet.roomID = atoi(roomID);
 		
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 
@@ -174,9 +171,6 @@ void *messageSender(void *arg){
 			
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 
-			//mudar isso
-			//myself.roomID = atoi(roomID);
-
 		}else if(strncmp(userInput, "/leave", 6) == 0){
 			puts("Leaving room...");
 			
@@ -196,7 +190,6 @@ void *messageSender(void *arg){
 			strcpy(packet.nickname, myself.nickname);
 			strcpy(packet.buffer, msg);
 			packet.option = 2;
-			//packet.roomID = myself.roomID;
 
 			int sent = send(socket_desc, (void *)&packet, sizeof(struct PACKET), 0);
 		}

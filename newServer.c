@@ -269,8 +269,8 @@ void *client_handler(void *fd) {
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
-		printf("%s threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.nickname, threadinfo.roomID, curr->threadinfo.roomID);
-		if (threadinfo.roomID != curr->threadinfo.roomID || threadinfo.roomID == 0)  continue;
+		        printf("%s threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.nickname, threadinfo.roomID, curr->threadinfo.roomID);
+		        if (threadinfo.roomID != curr->threadinfo.roomID || threadinfo.roomID == 0)  continue;
                 if (!compare(&curr->threadinfo, &threadinfo)) continue; 
                 spacket.option = 2;
                 strcpy(spacket.nickname, threadinfo.nickname);
@@ -285,27 +285,30 @@ void *client_handler(void *fd) {
             struct ROOM* newRoom = (struct ROOM*) malloc(sizeof(struct ROOM));
             strcpy(newRoom->roomName, packet.buffer);
             
-	    pthread_mutex_lock(&roomList_mutex);
+    	    pthread_mutex_lock(&roomList_mutex);
             newRoom->roomID = ++roomCounter;
             roomListInsert(&room_list, newRoom);
             pthread_mutex_unlock(&roomList_mutex);
-        	
-	    pthread_mutex_lock(&clientlist_mutex);
-	    // Atualiza nova roomID na lista de clientes 
-            for(curr = client_list.head; curr != NULL; curr = curr->next) 
+            	
+    	    pthread_mutex_lock(&clientlist_mutex);
+
+	       // Atualiza nova roomID na lista de clientes 
+            for(curr = client_list.head; curr != NULL; curr = curr->next){ 
                 if(compare(&curr->threadinfo, &threadinfo) == 0) {
                     curr->threadinfo.roomID = newRoom->roomID;
                     threadinfo.roomID = newRoom->roomID;
                     break;
                 }
+            }
             pthread_mutex_unlock(&clientlist_mutex);
-	}
+	    }
+
         else if(packet.option == 4) { // LIST ROOMS
             puts("Listing rooms");
             printRoomList(&room_list);
         }
 
-        else if(packet.option == 5){
+        else if(packet.option == 5){ // JOIN ROOM
             puts("Join request");
 	    
         char userEntered[NICKLENGHT];
@@ -313,11 +316,11 @@ void *client_handler(void *fd) {
 	    int idRoom = 0;
 	    for(aux = room_list.head; aux != NULL; aux = aux->next)
 		if(strcmp(aux->roomName, packet.buffer) == 0)
-        		idRoom = aux->roomID;
+        	idRoom = aux->roomID;
 	    printf("RoomId:%i\n", idRoom);
-    	    pthread_mutex_lock(&clientlist_mutex);
+    	pthread_mutex_lock(&clientlist_mutex);
 	    // Atualiza nova roomID na lista de clientes 
-            for(curr = client_list.head; curr != NULL; curr = curr->next)
+            for(curr = client_list.head; curr != NULL; curr = curr->next){
                 if(compare(&curr->threadinfo, &threadinfo) == 0) {
                     if (strcmp(packet.buffer,"noRoom") == 0) {
                         exitRoom = 1;
@@ -327,28 +330,27 @@ void *client_handler(void *fd) {
                     strcpy(userEntered,curr->threadinfo.nickname);
                     break;
                 }
-
+            }
             for(curr = client_list.head; curr != NULL; curr = curr->next) {
                 struct PACKET spacket;
                 memset(&spacket, 0, sizeof(struct PACKET));
         //printf("\threadinfo.roomID: %i curr->threadinfo.roomID %i\n", threadinfo.roomID, curr->threadinfo.roomID);
-        if ((threadinfo.roomID == curr->threadinfo.roomID && threadinfo.roomID != 0) || (exitRoom)) {
-                if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
-                spacket.option = 2;
+                if ((threadinfo.roomID == curr->threadinfo.roomID && threadinfo.roomID != 0) || (exitRoom)) {
+                    if (!compare(&curr->threadinfo, &threadinfo)) continue; // send to all others
+                    spacket.option = 2;
         //spacket.roomID = packet.roomID;
-                strcpy(spacket.nickname, userEntered);
-                char msg[MESSAGE_SIZE];
-                if (exitRoom)
-                    strcpy(msg,"left the room");
-                else
-                    strcpy(msg,"entered the room");
-                strcpy(spacket.buffer, msg);
-                sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
-            }
+                    strcpy(spacket.nickname, userEntered);
+                    char msg[MESSAGE_SIZE];
+                    if (exitRoom)
+                        strcpy(msg,"left the room");
+                    else
+                        strcpy(msg,"entered the room");
+                    strcpy(spacket.buffer, msg);
+                    sent = send(curr->threadinfo.sockfd, (void *)&spacket, sizeof(struct PACKET), 0);
+                }
             }
             pthread_mutex_unlock(&clientlist_mutex);
-        }
-            
+        }  
         
         else if(packet.option == 10) { // QUIT FROM SERVER
             printf("[%d] %s has disconnected...\n", threadinfo.sockfd, threadinfo.nickname);
